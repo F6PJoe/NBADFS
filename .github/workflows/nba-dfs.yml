@@ -2,9 +2,11 @@ name: Run NBA DFS R Script
 
 on:
   workflow_dispatch:  # Enables manual trigger from GitHub UI
-  #schedule:
-    #- cron: '*/15 14-23 * * *'  # 10 a.m. to 7 p.m. ET
-    #- cron: '*/15 0-1 * * *'    # 8 p.m. to 10 p.m. ET
+  schedule:
+    # For Daylight Saving Time (DST, UTC -4)
+    - cron: '25 16-2/1 * * *'
+    # For Standard Time (EST, UTC -5)
+    - cron: '25 17-3/1 * * *'
 
 jobs:
   run_script:
