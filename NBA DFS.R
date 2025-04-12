@@ -16,6 +16,8 @@ if (length(to_install) > 0) install.packages(to_install)
 # Load all packages
 lapply(packages, library, character.only = TRUE)
 
+source("functions.R")
+
 # Function to authenticate with Google Sheets using GCP service account key
 authenticate_google_sheets <- function() {
   json_key_base64 <- Sys.getenv("GCP_SHEETS_KEY_B64")
