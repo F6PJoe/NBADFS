@@ -39,9 +39,6 @@ json_key_base64 <- Sys.getenv("GCP_SHEETS_KEY_B64")
 # Decode the base64 string into the JSON content
 json_key <- rawToChar(base64enc::base64decode(json_key_base64))
 
-# Decode the base64 string into the JSON content
-#json_key <- rawToChar(base64_decode(json_key_base64))
-
 # Write the decoded JSON content to a temporary file
 temp_json_file <- tempfile(fileext = ".json")
 writeLines(json_key, temp_json_file)
@@ -89,6 +86,12 @@ slate_index <- slate_index[1]
 
 # Extract player data for the identified slate
 df <- data$slates$info[[slate_index]]
+
+# Check if the data is empty and stop the script without sending a notification
+if (nrow(df) == 0) {
+  cat("No data found, stopping script without notification.\n")
+  quit(save = "no", status = 0)  # Stops the script without any error
+}
 
 # Rename columns for consistency
 names(df) <- c("Start Time", "Opp", "Player", "ID", "Pos", "Team", "Proj", "Salary", "Beta", "Value")
