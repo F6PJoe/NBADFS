@@ -1,220 +1,118 @@
-# clear console and workspace
+# Clear console and workspace
 cat("\014")
 rm(list = ls())
 
-# List of required packages
+# Install and load required packages
 packages <- c(
-  "XML", "RCurl", "stringr", "rjson", "plyr", "dplyr", "httr",
-  "jsonlite", "magrittr", "googlesheets4", "googledrive",
-  "lubridate", "base64enc"  # <-- Added base64enc here
+  "XML", "RCurl", "stringr", "rjson", "plyr", "dplyr", "httr", 
+  "jsonlite", "magrittr", "googlesheets4", "googledrive", "lubridate", "base64enc"
 )
 
 # Install any missing packages
-for (pkg in packages) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    install.packages(pkg)
-  }
+installed_pkgs <- installed.packages()[, "Package"]
+to_install <- setdiff(packages, installed_pkgs)
+if (length(to_install) > 0) install.packages(to_install)
+
+# Load all packages
+lapply(packages, library, character.only = TRUE)
+
+# Function to authenticate with Google Sheets using GCP service account key
+authenticate_google_sheets <- function() {
+  json_key_base64 <- Sys.getenv("GCP_SHEETS_KEY_B64")
+  json_key <- rawToChar(base64enc::base64decode(json_key_base64))
+  temp_json_file <- tempfile(fileext = ".json")
+  writeLines(json_key, temp_json_file)
+  gs4_auth(path = temp_json_file)
 }
 
-# load packages   
-library(XML)
-library(RCurl)
-library(stringr)
-library(rjson)   
-library(plyr)
-library(dplyr)
-library(httr)
-library(jsonlite)
-#library(tidyverse)
-library(magrittr)
-library(googlesheets4)
-library(googledrive)
-library(lubridate)
-library(base64enc)  # <-- Added this line
+# Function to extract slate data from an API
+extract_slate_data <- function(api_url, header_key) {
+  response <- GET(api_url, add_headers(Authorization = header_key, `Content-Type` = "application/json"))
+  data <- content(response, "parsed", simplifyVector = TRUE)
+  slates <- data$slates
+  slate_col <- names(slates)[sapply(slates, is.character)]
+  slate_desc_column <- slate_col[which(sapply(slate_col, function(col) any(grepl("MAIN", slates[[col]], ignore.case = TRUE))))][1]
 
-
-# Get the base64-encoded JSON string from the environment variable
-json_key_base64 <- Sys.getenv("GCP_SHEETS_KEY_B64")
-
-# Decode the base64 string into the JSON content
-json_key <- rawToChar(base64enc::base64decode(json_key_base64))
-
-# Decode the base64 string into the JSON content
-#json_key <- rawToChar(base64_decode(json_key_base64))
-
-# Write the decoded JSON content to a temporary file
-temp_json_file <- tempfile(fileext = ".json")
-writeLines(json_key, temp_json_file)
-
-# Use the temporary JSON file for authentication
-gs4_auth(path = temp_json_file)
-# set working directory
-#setwd("C:/Users/jbond/OneDrive/Documents/")
-source("functions.R")
-
-#excludeT <- c("DET", "WAS")
-
-# Define API endpoint for FanDuel data
-response <- GET("https://bluecollardfs.com/api/nba_fanduel",
-                add_headers(
-                  Authorization = "FantasySixPack",
-                  `Content-Type` = "application/json"
-                ))
-
-# Parse JSON response
-data <- content(response, "parsed", simplifyVector = TRUE)
-
-# Extract slate information
-slates <- data$slates
-
-# Identify the correct slate column
-text_columns <- names(slates)[sapply(slates, is.character)]
-slate_col <- text_columns[which(sapply(text_columns, function(col) any(grepl("MAIN", slates[[col]], ignore.case = TRUE))))]
-
-if (length(slate_col) == 0) {
-  stop("No relevant column found containing slate names.")
+  if (is.null(slate_desc_column)) stop("No relevant column found containing slate names.")
+  
+  slate_index <- which(grepl("MAIN", slates[[slate_desc_column]], ignore.case = TRUE))
+  if (length(slate_index) == 0) slate_index <- which(grepl("ALL|ALL DAY", slates[[slate_desc_column]], ignore.case = TRUE))
+  if (length(slate_index) == 0) stop("No matching slate found.")
+  
+  slate_index <- slate_index[1]
+  return(slates$info[[slate_index]])
 }
 
-slate_desc_column <- slate_col[1]
-
-# Identify the relevant slate index
-slate_index <- which(grepl("MAIN", slates[[slate_desc_column]], ignore.case = TRUE))
-if (length(slate_index) == 0) {
-  slate_index <- which(grepl("ALL|ALL DAY", slates[[slate_desc_column]], ignore.case = TRUE))
+# Function to process player data
+process_player_data <- function(df) {
+  names(df) <- c("Start Time", "Opp", "Player", "ID", "Pos", "Team", "Proj", "Salary", "Beta", "Value")
+  
+  df$Proj <- round(as.numeric(df$Proj), 2)
+  df$Salary <- as.numeric(df$Salary)
+  df$Value <- round(as.numeric(df$Value), 1)
+  
+  # Retain relevant columns
+  df <- df[, c("Player", "Pos", "Team", "Opp", "Salary", "Proj", "Value")]
+  
+  # Remove NA values and filter for projected scores >= 5
+  df <- df[!is.na(df$Proj) & df$Proj >= 5, ]
+  
+  # Process positional data for dual-position players
+  df$OptPos <- df$Pos
+  dualPos <- grepl("/", df$Pos)
+  df$Pos2 <- ""
+  df$Pos2[dualPos] <- sub("/", "", str_extract(df$Pos[dualPos], "/[A-Z0-9]{1,2}$"))
+  df$Pos[dualPos] <- sub("/", "", str_extract(df$Pos[dualPos], "^[A-Z0-9]{1,2}/"))
+  df$Pos1 <- df$Pos
+  df$Pos <- df$OptPos
+  
+  # Arrange players by highest projections
+  df <- arrange(df, desc(Proj))
+  
+  # Normalize player and team names
+  df$Player <- sapply(df$Player, replaceName)
+  df$Team <- recode(df$Team, "GSW" = "GS", "NYK" = "NY", "PHO" = "PHX", "NOR" = "NO", "NOP" = "NO", "SAN" = "SA", "SAS" = "SA")
+  
+  # Remove any remaining NA values
+  df <- df[!is.na(df$Player) & !is.na(df$Proj), ]
+  
+  return(df)
 }
-if (length(slate_index) == 0) {
-  stop("No matching slate found.")
+
+# Function to write data to Google Sheets
+write_to_sheets <- function(df, sheet_url, sheet_name) {
+  sheet_write(df[, c("Player", "Proj", "Salary", "Value", "Pos", "Team", "Opp")], sheet = sheet_name, ss = sheet_url)
 }
-slate_index <- slate_index[1]
 
-# Extract player data for the identified slate
-df <- data$slates$info[[slate_index]]
-
-# Rename columns for consistency
-names(df) <- c("Start Time", "Opp", "Player", "ID", "Pos", "Team", "Proj", "Salary", "Beta", "Value")
-
-# Convert necessary columns to numeric and round values
-df$Proj <- round(as.numeric(df$Proj), 2)
-df$Salary <- as.numeric(df$Salary)
-df$Value <- round(as.numeric(df$Value), 1)
-
-# Retain relevant columns
-df <- df[, c("Player", "Pos", "Team", "Opp", "Salary", "Proj", "Value")]
-
-# Remove NA values and filter for projected scores greater than or equal to 5
-df <- df[!is.na(df$Proj) & df$Proj >= 5, ]
-fd <- df
-
-# Process positional data for dual-position players
-fd$OptPos <- fd$Pos
-dualPos <- grepl("/", fd$Pos)
-fd$Pos2 <- ""
-fd$Pos2[dualPos] <- sub("/", "", str_extract(fd$Pos[dualPos], "/[A-Z0-9]{1,2}$"))
-fd$Pos[dualPos] <- sub("/", "", str_extract(fd$Pos[dualPos], "^[A-Z0-9]{1,2}/"))
-fd$Pos1 <- fd$Pos
-fd$Pos <- fd$OptPos
-
-# Arrange players by highest projections
-fd <- arrange(fd, desc(Proj))
-
-#Normalize player names
-fd$Player <- sapply(fd$Player, replaceName)
-
-# Normalize team names
-fd$Team <- recode(fd$Team, "GSW" = "GS", "NYK" = "NY", "PHO" = "PHX", "NOR" = "NO", "NOP" = "NO", "SAN" = "SA", "SAS" = "SA")
-
-# Remove any remaining NA values
-fd <- fd[!is.na(fd$Player) & !is.na(fd$Proj), ]
-
-# Export processed data to Google Sheets
-sheet_url_fd <- "https://docs.google.com/spreadsheets/d/1dWsEg3HLa9KY1YES31P1Mam0vLFK9zrR91rOsDSKsA8/edit#gid=0"
-sheet_write(fd[, c("Player", "Proj", "Salary", "Value", "Pos", "Team", "Opp")], sheet = "FD NBA DFS", ss = sheet_url_fd)
-
-# Update timestamp in "NBA Update Time" sheet
-sheet_url_time <- "https://docs.google.com/spreadsheets/d/1dWsEg3HLa9KY1YES31P1Mam0vLFK9zrR91rOsDSKsA8/edit#gid=1047637228"
-
-# Get current time in Eastern Time (ET)
-update_time <- with_tz(Sys.time(), "America/New_York")
-
-# Format date as "Month Day, YYYY"
-formatted_date <- format(update_time, "%B %d, %Y")
-
-# Format time as "HH:MM AM/PM ET"
-formatted_time <- format(update_time, "%I:%M %p ET")
-
-# Write the date to A2
-range_write(ss = sheet_url_time, data = data.frame(Date = formatted_date), sheet = "NBA Update Time", range = "A2", col_names = FALSE)
-
-# Write the time to B2
-range_write(ss = sheet_url_time, data = data.frame(Time = formatted_time), sheet = "NBA Update Time", range = "B2", col_names = FALSE)
-
-# Define API endpoint for DraftKings data
-response <- GET("https://bluecollardfs.com/api/nba_draftkings",
-                add_headers(
-                  Authorization = "FantasySixPack",
-                  `Content-Type` = "application/json"
-                ))
-
-# Parse DraftKings data
-data <- content(response, "parsed", simplifyVector = TRUE)
-slates <- data$slates
-
-# Identify the correct slate for DraftKings
-text_columns <- names(slates)[sapply(slates, is.character)]
-slate_col <- text_columns[which(sapply(text_columns, function(col) any(grepl("MAIN", slates[[col]], ignore.case = TRUE))))]
-if (length(slate_col) == 0) {
-  stop("No relevant column found containing slate names.")
+# Function to update timestamp in "NBA Update Time" sheet
+update_timestamp <- function(sheet_url_time) {
+  update_time <- with_tz(Sys.time(), "America/New_York")
+  formatted_date <- format(update_time, "%B %d, %Y")
+  formatted_time <- format(update_time, "%I:%M %p ET")
+  
+  range_write(ss = sheet_url_time, data = data.frame(Date = formatted_date), sheet = "NBA Update Time", range = "A2", col_names = FALSE)
+  range_write(ss = sheet_url_time, data = data.frame(Time = formatted_time), sheet = "NBA Update Time", range = "B2", col_names = FALSE)
 }
-slate_desc_column <- slate_col[1]
-slate_index <- which(grepl("MAIN", slates[[slate_desc_column]], ignore.case = TRUE))
-if (length(slate_index) == 0) {
-  slate_index <- which(grepl("ALL|ALL DAY", slates[[slate_desc_column]], ignore.case = TRUE))
+
+# Main function to execute the entire workflow
+main <- function() {
+  authenticate_google_sheets()
+  sheet_url_fd <- "https://docs.google.com/spreadsheets/d/1dWsEg3HLa9KY1YES31P1Mam0vLFK9zrR91rOsDSKsA8/edit#gid=0"
+  sheet_url_time <- "https://docs.google.com/spreadsheets/d/1dWsEg3HLa9KY1YES31P1Mam0vLFK9zrR91rOsDSKsA8/edit#gid=1047637228"
+  
+  # Get FanDuel data
+  fd_data <- extract_slate_data("https://bluecollardfs.com/api/nba_fanduel", "FantasySixPack")
+  fd_processed <- process_player_data(fd_data)
+  write_to_sheets(fd_processed, sheet_url_fd, "FD NBA DFS")
+  
+  # Get DraftKings data
+  dk_data <- extract_slate_data("https://bluecollardfs.com/api/nba_draftkings", "FantasySixPack")
+  dk_processed <- process_player_data(dk_data)
+  write_to_sheets(dk_processed, sheet_url_fd, "DK NBA DFS")
+  
+  # Update timestamp
+  update_timestamp(sheet_url_time)
 }
-if (length(slate_index) == 0) {
-  stop("No matching slate found.")
-}
-slate_index <- slate_index[1]
 
-df <- data$slates$info[[slate_index]]
-names(df) <- c("Start Time", "Opp", "Player", "ID", "Pos", "Team", "Proj", "Salary", "Beta", "Value")
-df$Proj <- round(as.numeric(df$Proj), 2)
-df$Salary <- as.numeric(df$Salary)
-df$Value <- round(as.numeric(df$Value), 1)
-df <- df[, c("Player", "Pos", "Team", "Opp", "Salary", "Proj", "Value")]
-df <- df[!is.na(df$Proj) & df$Proj >= 5, ]
-dk <- df
-
-# Process DraftKings positional data
-dk$OptPos <- dk$Pos
-dualPos <- grepl("/", dk$Pos)
-dk$Pos2 <- ""
-dk$Pos2[dualPos] <- sub("/", "", str_extract(dk$Pos[dualPos], "/[A-Z0-9]{1,2}$"))
-dk$Pos[dualPos] <- sub("/", "", str_extract(dk$Pos[dualPos], "^[A-Z0-9]{1,2}/"))
-dk$Pos1 <- dk$Pos
-dk$Pos <- dk$OptPos
-
-# Arrange DraftKings players by highest projections
-dk <- arrange(dk, desc(Proj))
-
-dk$Player <- sapply(dk$Player, replaceName)
-
-dk$Team <- recode(dk$Team, "GSW" = "GS", "NYK" = "NY", "NOR" = "NO", "NOP" = "NO", "SAN" = "SA", "SAS" = "SA")
-dk <- dk[!is.na(dk$Player) & !is.na(dk$Proj), ]
-
-sheet_url_dk <- "https://docs.google.com/spreadsheets/d/1dWsEg3HLa9KY1YES31P1Mam0vLFK9zrR91rOsDSKsA8/edit#gid=1290084446"
-sheet_write(dk[, c("Player", "Proj", "Salary", "Value", "Pos", "Team", "Opp")], sheet = "DK NBA DFS", ss = sheet_url_dk)
-
-# Get current time in Eastern Time (ET)
-update_time <- with_tz(Sys.time(), "America/New_York")
-
-# Format date as "Month Day, YYYY"
-formatted_date <- format(update_time, "%B %d, %Y")
-
-# Format time as "HH:MM AM/PM ET"
-formatted_time <- format(update_time, "%I:%M %p ET")
-
-# Write the date to A2
-range_write(ss = sheet_url_time, data = data.frame(Date = formatted_date), sheet = "NBA Update Time", range = "A2", col_names = FALSE)
-
-# Write the time to B2
-range_write(ss = sheet_url_time, data = data.frame(Time = formatted_time), sheet = "NBA Update Time", range = "B2", col_names = FALSE)
+# Run the main function
+main()
