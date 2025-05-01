@@ -66,7 +66,7 @@ replaceName <- function(name) {
   else if (name == "Danuel House Jr.") {name <- "Danuel House"}
   else if (name == "Glenn Robinson III") {name <- "Glenn Robinson"}
   else if (name == "Fred Van Vleet" | name == "Fred Van") {name <- "Fred VanVleet"}
-  else if (name == "Alperen Sengün" | name == "Alperen Sengün") {name <- "Alperen Sengun"}
+  else if (name == "Alperen Sengün" | name == "Alperen Sengün" | name == "Alperen Şengün") {name <- "Alperen Sengun"}
   else if (name == "Greg Brown III") {name <- "Greg Brown"}
   else if (name == "G.G. Jackson" | name == "Gregory Jackson" | name == "GG Jackson II") {name <- "GG Jackson"}
   else if (name == "James Ennis III") {name <- "James Ennis"}
