@@ -2,7 +2,10 @@ name: Run NBA DFS R Script
 
 on:
   schedule:
-    - cron: '25,35,45,55 16-23,0-2 * * *'  # Every 10 minutes between 4:25 PM and 2:55 AM UTC
+    - cron: '15,45 18-21 * * 1-5'   # Weekdays 2:15 PM ET - 4:45 PM ET (every 30 min)
+    - cron: '10,25,40,55 22-2 * * 1-5'   # Weekdays 5:10 PM ET - 10:15 PM ET (every 15 min)
+    - cron: '10,25,40,55 17-22 * * 6'   # Saturdays 12:10 PM ET - 10:15 PM ET (every 15 min)
+    - cron: '10,25,40,55 14-22 * * 0'   # Sundays 10:10 AM ET - 10:15 PM ET (every 15 min)C
   workflow_dispatch:
 
 jobs:
