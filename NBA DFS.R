@@ -58,20 +58,40 @@ authenticate_google_sheets <- function() {
 }
 
 # Function to extract slate data from an API
+# Function to extract slate data from an API
 extract_slate_data <- function(api_url, header_key) {
   response <- GET(api_url, add_headers(Authorization = header_key, `Content-Type` = "application/json"))
   data <- content(response, "parsed", simplifyVector = TRUE)
   slates <- data$slates
-  slate_col <- names(slates)[sapply(slates, is.character)]
-  slate_desc_column <- slate_col[which(sapply(slate_col, function(col) any(grepl("MAIN", slates[[col]], ignore.case = TRUE))))][1]
 
-  if (is.null(slate_desc_column)) stop("No relevant column found containing slate names.")
+  # Ensure there's at least one slate
+  if (length(slates) == 0) stop("No slates found in the API response.")
   
+  # Identify potential slate description columns
+  slate_col <- names(slates)[sapply(slates, is.character)]
+
+  # Try to find a column containing "MAIN"
+  slate_desc_column <- slate_col[which(sapply(slate_col, function(col) any(grepl("MAIN", slates[[col]], ignore.case = TRUE))))][1]
+  
+  if (is.null(slate_desc_column)) {
+    message("No 'MAIN' slate found, pulling the first slate column available.")
+    slate_desc_column <- slate_col[1]
+  }
+
+  # Try to find slates labeled "MAIN"
   slate_index <- which(grepl("MAIN", slates[[slate_desc_column]], ignore.case = TRUE))
-  if (length(slate_index) == 0) slate_index <- which(grepl("ALL|ALL DAY", slates[[slate_desc_column]], ignore.case = TRUE))
-  if (length(slate_index) == 0) stop("No matching slate found.")
-  
-  slate_index <- slate_index[1]
+
+  # If not found, try "ALL" or "ALL DAY"
+  if (length(slate_index) == 0) {
+    slate_index <- which(grepl("ALL|ALL DAY", slates[[slate_desc_column]], ignore.case = TRUE))
+  }
+
+  # If still not found, just use the first slate
+  if (length(slate_index) == 0) {
+    message("No matching slate found for 'MAIN' or 'ALL DAY', pulling the first slate available.")
+    slate_index <- 1
+  }
+
   return(slates$info[[slate_index]])
 }
 
