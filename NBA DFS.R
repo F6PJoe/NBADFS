@@ -63,36 +63,29 @@ extract_slate_data <- function(api_url, header_key) {
   response <- GET(api_url, add_headers(Authorization = header_key, `Content-Type` = "application/json"))
   data <- content(response, "parsed", simplifyVector = TRUE)
   slates <- data$slates
-
-  # Ensure there's at least one slate
+  
   if (length(slates) == 0) stop("No slates found in the API response.")
   
-  # Identify potential slate description columns
-  slate_col <- names(slates)[sapply(slates, is.character)]
-
-  # Try to find a column containing "MAIN"
-  slate_desc_column <- slate_col[which(sapply(slate_col, function(col) any(grepl("MAIN", slates[[col]], ignore.case = TRUE))))][1]
+  # Try to find the 'MAIN' slate
+  slate_names <- sapply(slates$info, function(s) s$name)
+  main_index <- which(grepl("MAIN", slate_names, ignore.case = TRUE))
   
-  if (is.null(slate_desc_column)) {
-    message("No 'MAIN' slate found, pulling the first slate column available.")
-    slate_desc_column <- slate_col[1]
+  # If found, check if it has players
+  if (length(main_index) > 0) {
+    main_slate <- slates$info[[main_index]]
+    if (!is.null(main_slate$players) && length(main_slate$players) > 0) {
+      return(main_slate)
+    }
   }
-
-  # Try to find slates labeled "MAIN"
-  slate_index <- which(grepl("MAIN", slates[[slate_desc_column]], ignore.case = TRUE))
-
-  # If not found, try "ALL" or "ALL DAY"
-  if (length(slate_index) == 0) {
-    slate_index <- which(grepl("ALL|ALL DAY", slates[[slate_desc_column]], ignore.case = TRUE))
-  }
-
-  # If still not found, just use the first slate
-  if (length(slate_index) == 0) {
-    message("No matching slate found for 'MAIN' or 'ALL DAY', pulling the first slate available.")
-    slate_index <- 1
-  }
-
-  return(slates$info[[slate_index]])
+  
+  # Fallback: find slate with the most players
+  slate_lengths <- sapply(slates$info, function(s) length(s$players))
+  best_index <- which.max(slate_lengths)
+  
+  message(sprintf("MAIN slate was empty or not found. Using slate: %s with %d players.", 
+                  slates$info[[best_index]]$name, slate_lengths[best_index]))
+  
+  return(slates$info[[best_index]])
 }
 
 # Function to process player data
