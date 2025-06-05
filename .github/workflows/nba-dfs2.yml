@@ -1,4 +1,4 @@
-name: Run NBA DFS R Script
+name: Run NBA DFS 2 R Script
 
 on:
   #schedule:
