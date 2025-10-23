@@ -103,13 +103,13 @@ process_player_data <- function(df) {
   df <- df[!is.na(df$Proj) & df$Proj >= 5, ]
   
   # Process positional data for dual-position players
-  df$OptPos <- df$Pos
-  dualPos <- grepl("/", df$Pos)
-  df$Pos2 <- ""
-  df$Pos2[dualPos] <- sub("/", "", str_extract(df$Pos[dualPos], "/[A-Z0-9]{1,2}$"))
-  df$Pos[dualPos] <- sub("/", "", str_extract(df$Pos[dualPos], "^[A-Z0-9]{1,2}/"))
-  df$Pos1 <- df$Pos
-  df$Pos <- df$OptPos
+  #df$OptPos <- df$Pos
+  #dualPos <- grepl("/", df$Pos)
+  #df$Pos2 <- ""
+  #df$Pos2[dualPos] <- sub("/", "", str_extract(df$Pos[dualPos], "/[A-Z0-9]{1,2}$"))
+  #df$Pos[dualPos] <- sub("/", "", str_extract(df$Pos[dualPos], "^[A-Z0-9]{1,2}/"))
+  #df$Pos1 <- df$Pos
+  #df$Pos <- df$OptPos
   
   # Arrange players by highest projections
   df <- arrange(df, desc(Proj))
@@ -120,6 +120,10 @@ process_player_data <- function(df) {
   
   # Remove any remaining NA values
   df <- df[!is.na(df$Player) & !is.na(df$Proj), ]
+
+  # Reorder columns
+  df <- df %>%
+    select(Player, Proj, Salary, Value, Pos, Team, Opp)
   
   return(df)
 }
@@ -235,3 +239,4 @@ main <- function() {
 
 # Run the main function
 main()
+
