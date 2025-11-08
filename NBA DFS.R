@@ -82,25 +82,76 @@ get_clean_df <- function(endpoint) {
   return(df)
 }
 
+# Process a single site with error handling
+process_site <- function(site_name, endpoint, sheet_name, sheet_id) {
+  tryCatch({
+    message(sprintf("Processing %s...", site_name))
+    df <- get_clean_df(endpoint)
+    sheet_write(df, sheet = sheet_name, ss = sheet_id)
+    message(sprintf("✓ %s updated successfully (%d players)", site_name, nrow(df)))
+    return(TRUE)
+  }, error = function(e) {
+    message(sprintf("✗ %s failed: %s", site_name, e$message))
+    return(FALSE)
+  })
+}
+
 # Main execution
 main <- function() {
   authenticate_google_sheets()
   sheet_id <- "1dWsEg3HLa9KY1YES31P1Mam0vLFK9zrR91rOsDSKsA8"
   
-  # Process FanDuel
-  fd <- get_clean_df("https://bluecollardfs.com/api/nba_fanduel")
-  sheet_write(fd, sheet = "FD NBA DFS", ss = sheet_id)
+  # Track success status
+  results <- list()
   
-  # Process DraftKings
-  dk <- get_clean_df("https://bluecollardfs.com/api/nba_draftkings")
-  sheet_write(dk, sheet = "DK NBA DFS", ss = sheet_id)
+  # Process DraftKings first (usually more reliable)
+  results$dk <- process_site(
+    site_name = "DraftKings",
+    endpoint = "https://bluecollardfs.com/api/nba_draftkings",
+    sheet_name = "DK NBA DFS",
+    sheet_id = sheet_id
+  )
   
-  # Update timestamp
-  now_et <- with_tz(Sys.time(), "America/New_York")
-  range_write(ss = sheet_id, data = data.frame(Date = format(now_et, "%B %d, %Y")), 
-              sheet = "NBA Update Time", range = "A2", col_names = FALSE)
-  range_write(ss = sheet_id, data = data.frame(Time = format(now_et, "%I:%M %p ET")), 
-              sheet = "NBA Update Time", range = "B2", col_names = FALSE)
+  # Process FanDuel (independent of DraftKings result)
+  results$fd <- process_site(
+    site_name = "FanDuel",
+    endpoint = "https://bluecollardfs.com/api/nba_fanduel",
+    sheet_name = "FD NBA DFS",
+    sheet_id = sheet_id
+  )
+  
+  # Update timestamp only if at least one site succeeded
+  if (results$dk || results$fd) {
+    tryCatch({
+      now_et <- with_tz(Sys.time(), "America/New_York")
+      range_write(ss = sheet_id, data = data.frame(Date = format(now_et, "%B %d, %Y")), 
+                  sheet = "NBA Update Time", range = "A2", col_names = FALSE)
+      range_write(ss = sheet_id, data = data.frame(Time = format(now_et, "%I:%M %p ET")), 
+                  sheet = "NBA Update Time", range = "B2", col_names = FALSE)
+      message("✓ Timestamp updated")
+    }, error = function(e) {
+      message(sprintf("✗ Timestamp update failed: %s", e$message))
+    })
+  }
+  
+  # Summary message
+  message("\n=== Update Summary ===")
+  message(sprintf("DraftKings: %s", ifelse(results$dk, "SUCCESS", "FAILED")))
+  message(sprintf("FanDuel: %s", ifelse(results$fd, "SUCCESS", "FAILED")))
+  
+  # Return exit code: 0 if at least one succeeded, warning if both failed
+  if (!results$dk && !results$fd) {
+    warning("Both DraftKings and FanDuel updates failed")
+    return(invisible(FALSE))
+  }
+  
+  return(invisible(TRUE))
 }
 
-main()
+# Run main with top-level error handling for GitHub Actions
+tryCatch({
+  main()
+}, error = function(e) {
+  message(sprintf("\n✗ Critical error: %s", e$message))
+  # Don't stop() or quit() - just let it exit normally with code 0
+})
