@@ -9,16 +9,18 @@ on:
     - cron: '8,23,38,53 23,0 * * 1-5'  # 23:08–00:53 UTC = 6:08–7:53 PM ET
 
     # Weekdays 7:58 PM – 9:43 PM ET (every 15 min)
-    - cron: '8,23,38,53 1,2 * * 2-6'   # 01:08–02:53 UTC = 7:08–8:53 PM ET
+    - cron: '8,23,38,53 1,2 * * 2-6'   # 01:08–02:53 UTC = 8:08–9:53 PM ET
 
     # Weekdays 9:58 PM – 10:13 PM ET
     - cron: '8 3 * * 2-6'  # 03:08 UTC = 10:08 PM ET
 
     # Saturdays 12:08 PM – 10:13 PM ET (every 15 min)
-    - cron: '8,23,38,53 17-3 * * 6'  # 17:08–03:53 UTC = 12:08 PM–10:08 PM ET
+    - cron: '8,23,38,53 17-23 * * 6'  # 17:08–23:53 UTC = 12:08–6:53 PM ET
+    - cron: '8,23,38,53 0-3 * * 0'    # 00:08–03:53 UTC = 7:08–10:53 PM ET (Sat night continued)
 
     # Sundays 10:08 AM – 10:13 PM ET (every 15 min)
-    - cron: '8,23,38,53 15-3 * * 0'  # 15:08–03:53 UTC = 10:08 AM–10:08 PM ET
+    - cron: '8,23,38,53 15-23 * * 0'  # 15:08–23:53 UTC = 10:08 AM–6:53 PM ET
+    - cron: '8,23,38,53 0-3 * * 1'    # 00:08–03:53 UTC = 7:08–10:53 PM ET (Sun night continued)
 
   workflow_dispatch:
 
