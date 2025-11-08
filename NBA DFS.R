@@ -40,17 +40,30 @@ get_clean_df <- function(endpoint) {
   slates <- data$slates
   
   # Find MAIN slate
+  slate_index <- NULL
+  
+  # First, try to find a slate with MAIN, ALL DAY, or ALL in the name
   text_cols <- names(slates)[sapply(slates, is.character)]
-  slate_col <- text_cols[which(sapply(text_cols, function(col) any(grepl("MAIN", slates[[col]], ignore.case = TRUE))))]
+  if (length(text_cols) > 0) {
+    for (col in text_cols) {
+      matches <- which(grepl("MAIN|ALL DAY|ALL", slates[[col]], ignore.case = TRUE))
+      if (length(matches) > 0) {
+        slate_index <- matches[1]
+        message(sprintf("Found slate: '%s'", slates[[col]][slate_index]))
+        break
+      }
+    }
+  }
   
-  if (length(slate_col) == 0) stop("No relevant column found containing slate names.")
-  
-  slate_index <- which(grepl("MAIN|ALL DAY|ALL", slates[[slate_col[1]]], ignore.case = TRUE))[1]
-  if (is.na(slate_index)) {
-    # Fallback: use slate with most players
-    slate_lengths <- sapply(slates$info, nrow)
-    slate_index <- which.max(slate_lengths)
-    message(sprintf("MAIN slate not found. Using slate with %d players.", slate_lengths[slate_index]))
+  # Fallback: use slate with most players
+  if (is.null(slate_index) || is.na(slate_index)) {
+    if (!is.null(slates$info) && length(slates$info) > 0) {
+      slate_lengths <- sapply(slates$info, function(x) if(is.data.frame(x)) nrow(x) else 0)
+      slate_index <- which.max(slate_lengths)
+      message(sprintf("MAIN slate not found. Using slate with most players (%d players).", slate_lengths[slate_index]))
+    } else {
+      stop("No slates with player data found in API response")
+    }
   }
   
   # Extract player data
