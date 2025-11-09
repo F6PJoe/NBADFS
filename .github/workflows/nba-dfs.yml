@@ -1,21 +1,21 @@
 name: Run NBA DFS R Script
 
-on: #nov- march
+on:
   schedule:
     # Weekdays 2:08 PM – 6:00 PM ET (every 30 min)
-    - cron: '8,38 18-22 * * 1-5'
+    - cron: '8,38 19-23 * * 1-5'
     
     # Weekdays 6:08 PM – 10:13 PM ET (every 15 min)
-    - cron: '8,23,38,53 22-23 * * 1-5'
+    - cron: '8,23,38,53 23 * * 1-5'
     - cron: '8,23,38,53 0-3 * * 2-6'
     
     # Saturdays 12:08 PM – 10:13 PM ET (every 15 min)
-    - cron: '8,23,38,53 16-23 * * 6'
-    - cron: '8,23,38,53 0-3 * * 0'
+    - cron: '8,23,38,53 17-23 * * 6'
+    - cron: '8,23,38,53 0-4 * * 0'
     
     # Sundays 10:08 AM – 10:13 PM ET (every 15 min)
-    - cron: '8,23,38,53 14-23 * * 0'
-    - cron: '8,23,38,53 0-3 * * 1'
+    - cron: '8,23,38,53 15-23 * * 0'
+    - cron: '8,23,38,53 0-4 * * 1'
 
 #on: march-oct schedule
   #schedule:
