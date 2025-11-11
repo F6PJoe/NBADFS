@@ -1,0 +1,13 @@
+name: NBA DFS Test Schedule
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run_script:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Test
+      run: echo "Schedule working"
