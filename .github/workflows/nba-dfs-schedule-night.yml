@@ -1,4 +1,4 @@
-name: Run NBA DFS R Script
+name: Run NBA DFS R Script Late Night
 
 on:
   schedule:
