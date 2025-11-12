@@ -10,8 +10,6 @@ on:
     
     # Sunday evenings 7:08 PM - 11:53 PM ET (now Monday in UTC)
     - cron: '8,23,38,53 0-4 * * 1'
-  
-  workflow_dispatch:
      
     # ==== EDT SCHEDULE (March - November, UTC-4) ====
     # Switch to this schedule on the second Sunday in March
