@@ -1,8 +1,10 @@
 name: Run NBA DFS R Script
 
+#testing updated schedule
+
 on:
   schedule:
-        # Sundays 10:08 AM - 6:53 PM ET
+    # Sundays 10:08 AM - 6:53 PM ET
     - cron: '8,23,38,53 15-23 * * 0'
     
     # Weekdays 2:08 PM - 6:53 PM ET (before midnight UTC)
