@@ -1,7 +1,5 @@
 name: Run NBA DFS R Script Late Night
 
-#testing new schedule
-
 on:
   schedule:
     # Weekday evenings 7:08 PM - 10:53 PM ET (after midnight UTC)
@@ -37,6 +35,23 @@ jobs:
   run_script:
     runs-on: ubuntu-latest
     steps:
+
+    - name: Debug trigger and timestamps
+      run: |
+        echo "GITHUB_EVENT_NAME=$GITHUB_EVENT_NAME"
+        echo "GITHUB_REF=$GITHUB_REF"
+        echo "GITHUB_SHA=$GITHUB_SHA"
+        echo "GITHUB_RUN_ID=$GITHUB_RUN_ID"
+        echo "CURRENT_UTC=$(date -u '+%Y-%m-%d %H:%M:%S %Z')"
+        echo "CURRENT_LOCAL=$(date '+%Y-%m-%d %H:%M:%S %Z')"
+        echo "--- event payload ---"
+        if [ -n "$GITHUB_EVENT_PATH" ] && [ -f "$GITHUB_EVENT_PATH" ]; then
+          cat "$GITHUB_EVENT_PATH"
+        else
+          echo "no event path"
+        fi
+        ls -l "$GITHUB_EVENT_PATH" || true
+    
     - name: Checkout code
       uses: actions/checkout@v2
 
