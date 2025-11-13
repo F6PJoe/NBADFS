@@ -1,5 +1,7 @@
 name: Run NBA DFS R Script Late Night
 
+#testing new schedule
+
 on:
   schedule:
     # Weekday evenings 7:08 PM - 10:53 PM ET (after midnight UTC)
