@@ -2,14 +2,10 @@ name: Run NBA DFS R Script Late Night
 
 on:
   schedule:
-    # Weekday evenings 7:08 PM - 10:53 PM ET (after midnight UTC)
+    # Weekday evenings (Mon-Fri ET)
     - cron: '8,23,38,53 0-3 * * 2-6'
-    
-    # Saturday evenings 7:08 PM - 11:53 PM ET (now Sunday in UTC)
-    - cron: '8,23,38,53 0-4 * * 0'
-    
-    # Sunday evenings 7:08 PM - 11:53 PM ET (now Monday in UTC)
-    - cron: '8,23,38,53 0-4 * * 1'
+    # Weekend evenings (Sat & Sun ET)
+    - cron: '8,23,38,53 0-4 * * 0,1'
      
     # ==== EDT SCHEDULE (March - November, UTC-4) ====
     # Switch to this schedule on the second Sunday in March
