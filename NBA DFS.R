@@ -3,16 +3,16 @@ cat("\014")
 rm(list = ls())
 
 # Install and load required packages
-#packages <- c(
-#  "XML", "RCurl", "stringr", "rjson", "plyr", "dplyr", "httr", 
-#  "jsonlite", "magrittr", "googlesheets4", "googledrive", "lubridate", "base64enc"
-#)
+packages <- c(
+  "XML", "RCurl", "stringr", "rjson", "plyr", "dplyr", "httr", 
+  "jsonlite", "magrittr", "googlesheets4", "googledrive", "lubridate", "base64enc"
+)
 
 #installed_pkgs <- installed.packages()[, "Package"]
 #to_install <- setdiff(packages, installed_pkgs)
 #if (length(to_install) > 0) install.packages(to_install)
 
-#lapply(packages, library, character.only = TRUE)
+lapply(packages, library, character.only = TRUE)
 
 source("functions.R")
 
@@ -168,4 +168,5 @@ tryCatch({
   message(sprintf("\n✗ Critical error: %s", e$message))
   # Don't stop() or quit() - just let it exit normally with code 0
 })
+
 
