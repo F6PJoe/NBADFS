@@ -1,15 +1,15 @@
 name: Run NBA DFS R Script
 on:
-  schedule:
+  #schedule:
     # Sundays 10:08 AM - 6:53 PM ET
-    - cron: '8,23,38,53 15-23 * * 0'
+    #- cron: '8,23,38,53 15-23 * * 0'
     
     # Weekdays 2:08 PM - 6:53 PM ET (before midnight UTC)
-    - cron: '8,38 19-22 * * 1-5'        # Every 30 min 2:08-5:38 PM ET
-    - cron: '8,23,38,53 23 * * 1-5'     # Every 15 min 6:08-6:53 PM ET
+   # - cron: '8,38 19-22 * * 1-5'        # Every 30 min 2:08-5:38 PM ET
+   # - cron: '8,23,38,53 23 * * 1-5'     # Every 15 min 6:08-6:53 PM ET
     
     # Saturdays 12:08 PM - 6:53 PM ET
-    - cron: '8,23,38,53 17-23 * * 6'
+   # - cron: '8,23,38,53 17-23 * * 6'
      
     # ==== EDT SCHEDULE (March - November, UTC-4) ====
     # Switch to this schedule on the second Sunday in March
