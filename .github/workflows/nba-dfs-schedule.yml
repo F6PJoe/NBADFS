@@ -1,5 +1,4 @@
 name: Run NBA DFS R Script
-
 on:
   schedule:
     # Sundays 10:08 AM - 6:53 PM ET
@@ -29,14 +28,12 @@ on:
     # Sundays 10:08 AM - 10:13 PM ET (every 15 min)
 #    - cron: '8,23,38,53 14-23 * * 0'    # 14:08-23:53 UTC = 10:08 AM-6:53 PM EDT (Sunday)
 #    - cron: '8,23,38,53 0-3 * * 1'      # 00:08-03:53 UTC = 8:08-11:53 PM EDT (Monday, after midnight)
-
   workflow_dispatch:
 
 jobs:
   run_script:
     runs-on: ubuntu-latest
     steps:
-
     - name: Debug trigger and timestamps
       run: |
         echo "GITHUB_EVENT_NAME=$GITHUB_EVENT_NAME"
@@ -63,9 +60,9 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.R_LIBS_USER }}
-        key: ${{ runner.os }}-r-${{ hashFiles('**/*.lock') }}
+        key: ${{ runner.os }}-r-packages-v1
         restore-keys: |
-          ${{ runner.os }}-r-
+          ${{ runner.os }}-r-packages-
 
     - name: Install system dependencies
       run: |
@@ -74,7 +71,7 @@ jobs:
 
     - name: Install R packages
       run: |
-        Rscript -e "install.packages(c('googlesheets4', 'googledrive', 'dplyr', 'lubridate', 'stringr', 'rjson', 'httr', 'base64enc', 'magrittr', 'plyr', 'RCurl', 'XML'), repos = 'https://cloud.r-project.org')"
+        Rscript -e "install.packages(c('googlesheets4', 'googledrive', 'dplyr', 'lubridate', 'stringr', 'rjson', 'jsonlite', 'httr', 'base64enc', 'magrittr', 'plyr', 'RCurl', 'XML'), repos = 'https://cloud.r-project.org')"
 
     - name: Check installed R packages
       run: |
