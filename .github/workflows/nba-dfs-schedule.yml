@@ -60,7 +60,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ${{ env.R_LIBS_USER }}
-        key: ${{ runner.os }}-r-packages-v2
+        key: ${{ runner.os }}-r-packages-v3
         restore-keys: |
           ${{ runner.os }}-r-packages-
 
@@ -71,7 +71,11 @@ jobs:
 
     - name: Install R packages
       run: |
-        Rscript -e "install.packages(c('googlesheets4', 'googledrive', 'dplyr', 'lubridate', 'stringr', 'rjson', 'jsonlite', 'httr', 'base64enc', 'magrittr', 'plyr', 'RCurl', 'XML'), repos = 'https://cloud.r-project.org')"
+        Rscript -e "
+          options(repos = c(CRAN = 'https://cloud.r-project.org'))
+          install.packages('pak', dependencies = TRUE)
+          pak::pkg_install(c('googlesheets4', 'googledrive', 'dplyr', 'lubridate', 'stringr', 'rjson', 'httr', 'base64enc', 'magrittr', 'plyr', 'RCurl', 'XML'))
+        "
 
     - name: Check installed R packages
       run: |
