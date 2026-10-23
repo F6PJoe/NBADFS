@@ -30,42 +30,55 @@ get_clean_df <- function(endpoint) {
   data <- content(res, "parsed", simplifyVector = TRUE)
   slates <- data$slates
   
+  # Only classic slates; showdown slates carry CPT/UTIL salaries in roster_slots
+  classic <- which(slates$slate_type == "classic")
+  if (length(classic) == 0) classic <- seq_len(nrow(slates))
+  
+  # Prefer the MAIN slate, then ALL DAY, then the classic slate with the most players
   slate_index <- NULL
-  text_cols <- names(slates)[sapply(slates, is.character)]
-  if (length(text_cols) > 0) {
-    for (col in text_cols) {
-      matches <- which(grepl("MAIN|ALL DAY|ALL", slates[[col]], ignore.case = TRUE))
-      if (length(matches) > 0) {
-        slate_index <- matches[1]
-        message(sprintf("Found slate: '%s'", slates[[col]][slate_index]))
-        break
-      }
+  for (pattern in c("MAIN", "ALL DAY")) {
+    matches <- classic[grepl(pattern, slates$slate[classic], ignore.case = TRUE)]
+    if (length(matches) > 0) {
+      slate_index <- matches[1]
+      message(sprintf("Found slate: '%s'", slates$slate[slate_index]))
+      break
     }
   }
   
-  if (is.null(slate_index) || is.na(slate_index)) {
+  if (is.null(slate_index)) {
     if (!is.null(slates$info) && length(slates$info) > 0) {
-      slate_lengths <- sapply(slates$info, function(x) if(is.data.frame(x)) nrow(x) else 0)
-      slate_index <- which.max(slate_lengths)
-      message(sprintf("MAIN slate not found. Using slate with most players (%d players).", slate_lengths[slate_index]))
+      slate_lengths <- sapply(slates$info[classic], function(x) if(is.data.frame(x)) nrow(x) else 0)
+      slate_index <- classic[which.max(slate_lengths)]
+      message(sprintf("MAIN slate not found. Using slate with most players (%d players).", max(slate_lengths)))
     } else {
       stop("No slates with player data found in API response")
     }
   }
   
-  df <- data$slates$info[[slate_index]]
-  names(df) <- c("Start Time", "Opp", "Player", "ID", "Pos", "Team", "Proj", "Salary", "Beta", "Value")
+  # Select fields by name -- the API's field order is not stable
+  info <- data$slates$info[[slate_index]]
+  required <- c("name", "position", "team", "opponent", "salary", "projection", "value")
+  missing <- setdiff(required, names(info))
+  if (length(missing) > 0) {
+    stop(sprintf("API response missing fields: %s (got: %s)",
+                 paste(missing, collapse = ", "), paste(names(info), collapse = ", ")))
+  }
   
-  df <- df %>%
-    mutate(
-      Proj = round(as.numeric(Proj), 2),
-      Salary = as.numeric(Salary),
-      Value = round(as.numeric(Value), 1)
-    ) %>%
-    select(Player, Pos, Team, Opp, Salary, Proj, Value) %>%
+  df <- data.frame(
+    Player = info$name,
+    Pos    = info$position,
+    Team   = info$team,
+    Opp    = info$opponent,
+    Salary = as.numeric(info$salary),
+    Proj   = round(as.numeric(info$projection), 2),
+    Value  = round(as.numeric(info$value), 1),
+    stringsAsFactors = FALSE
+  ) %>%
     filter(!is.na(Proj) & Proj >= 5) %>%
     arrange(desc(Proj))
   
+  # FanDuel sends accented names (Luka Dončić); match DraftKings' plain spelling
+  df$Player <- stringi::stri_trans_general(df$Player, "Latin-ASCII")
   df$Player <- sapply(df$Player, replaceName)
   df$Team <- normalize_teams(df)
   df <- df[!is.na(df$Player) & !is.na(df$Proj), ]
