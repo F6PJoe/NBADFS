@@ -18,8 +18,8 @@ authenticate_google_sheets <- function() {
   gs4_auth(path = temp_json_file)
 }
 
-normalize_teams <- function(df) {
-  recode(df$Team,
+normalize_teams <- function(teams) {
+  recode(teams,
          "GSW" = "GS", "NYK" = "NY", "PHO" = "PHX", 
          "NOR" = "NO", "NOP" = "NO", "SAN" = "SA", "SAS" = "SA")
 }
@@ -80,7 +80,8 @@ get_clean_df <- function(endpoint) {
   # FanDuel sends accented names (Luka Dončić); match DraftKings' plain spelling
   df$Player <- stringi::stri_trans_general(df$Player, "Latin-ASCII")
   df$Player <- sapply(df$Player, replaceName)
-  df$Team <- normalize_teams(df)
+  df$Team <- normalize_teams(df$Team)
+  df$Opp  <- normalize_teams(df$Opp)
   df <- df[!is.na(df$Player) & !is.na(df$Proj), ]
   df <- df %>% select(Player, Proj, Salary, Value, Pos, Team, Opp)
   
